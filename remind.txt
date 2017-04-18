@@ -1,0 +1,127 @@
+###buildscript中的声明是gradle脚本自身需要使用的资源,可以声明的资源包括依赖项、第三方插件、
+ maven仓库地址等。而在build.gradle文件中直接声明的依赖项、仓库地址等信息是项目自身需要的资源。
+buildScript {
+     repositories {
+         mavenCentral()
+}
+}
+
+repositories {
+     mavenCentral()
+}
+
+###sourceSets
+定义了项目源文件的所在目录和输出目录
+sourceSets {
+    main {
+        resources {
+            srcDir 'src/main'
+        }
+        output.resourcesDir = "build/classes/main"
+    }
+}
+
+###war将项目打包成war
+        apply plugin: 'war'
+
+        War插件暴露了 webAppDirName 约定属性，默认值是 src/main/webapp，重新赋值就可以轻松地切换到
+        webfiles。通过触发from方法就可以有选择性地将需要的目录添加到WAR文件中，
+
+        webAppDirName = "webfiles‘        //改变web应用的源代码目录
+        war {
+            from ‘static‘                 //将静态资源文件的目录（js目录，css目录等）添加到WAR文件的根目录
+        }
+
+###jetty运行web应用使用的任务是 jettyRun 。即使没有WAR文件，它也会启动Jetty容器：
+        apply plugin: ‘jetty‘
+        运行命令 gradle jettyRun
+
+        jettyRun {
+            httpPort = 9090
+            contextPath = ‘a‘
+        }
+
+###http://www.cnblogs.com/linjl/p/6361970.html
+###allprojects 属性块可以设定所有模块共享的配置
+        allprojects {
+            apply plugin: 'idea'
+        }
+
+###subprojects属性块可以设定所有子模块共享的配置
+        subprojects {
+            apply plugin: 'java'
+            repositories {
+                jcenter()
+            }
+            ext {
+                slf4jVersion = '1.7.21'
+                springVersion = '4.3.6.RELEASE'
+                hibernateVersion ='5.0.6.Final'
+            }
+            dependencies {
+                compile(
+                    "org.slf4j:slf4j-api:${slf4jVersion}"
+                )
+            }
+            configurations {
+                all*.exclude group: 'commons-logging'
+            }
+        }
+
+
+###jar带包成jar包的名称
+   Java插件在我们的项目中加入了一个Jar任务，每一个Jar对象都一个manifest属性，这个属性是Manifest的一个实例。
+jar {
+  baseName = 'gs-rest-service'
+    version =  '0.1.0'
+    manifest {
+        attributes 'Main-Class': 'com.Application'
+    }
+}
+
+###java单独运行jar：java -jar first-java-project.jar
+
+
+###依赖
+1. 依赖仓库中的jar
+	compile 'group:name:version'
+2. 依赖本地jar文件夹
+	compile fileTree(dir, 'libs' ,include : '*.jar')
+3. 依赖本地单个jar文件
+	compile file('libs/xxx')
+3. 依赖工程
+	compile project(:xx:xx)
+
+###jar打包
+//依赖编译，然后打包JAR
+task taskJar(type:Jar, dependsOn: compileJava) {
+    from 'build/classes'
+    destinationDir = file('build/libs')
+}
+
+//清除上次的编译过的文件
+task clearPj(type:Delete){
+    delete 'build','target'
+}
+
+//把JAR复制到目标目录
+task release(type: Copy,dependsOn: [clearPj,clearPj]) {
+    from('build/libs') {
+        include '*.jar'
+    }
+    into ('target')
+}
+
+
+###uploadArchives执行“gradle uploadArchives”，所生成的jar文件将被上传到上级目录的lib(../lib)文件夹中
+uploadArchives {
+    repositories.mavenDeployer {
+        repository(url: 'file:../lib')
+    }
+}
+
+
+compile:用来编译项目源代码的依赖；
+runtime:在运行时被生成的类需要的依赖，默认项，包含编译时的依赖；
+testCompile:编译测试代码依赖，默认项，包含生成的类运行所需的依赖和编译源代码的依赖；
+testRuntime:运行测试所需要的依赖，默认项，包含上面三个依赖；
